@@ -49,10 +49,10 @@ public class Grammar {
 		m_cmRuleCounts.forEach((rule, ruleCount) -> {
 			Integer count = counts.get(rule.getLHS());
 			if (count == null) {
-				counts.put(rule.getLHS(), 0);
+				counts.put(rule.getLHS(), ruleCount);
+			} else {
+				counts.put(rule.getLHS(), count + ruleCount);
 			}
-
-			count += ruleCount;
 		});
 
 		m_cmRuleCounts.forEach((rule, ruleCount) -> {
