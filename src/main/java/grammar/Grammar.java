@@ -1,10 +1,7 @@
 package grammar;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.BiConsumer;
 
 import utils.CountMap;
 
@@ -46,6 +43,27 @@ public class Grammar {
 	public CountMap<Rule> getRuleCounts() {
 		return m_cmRuleCounts;
 	}
+
+	private void calc() {
+		// Grouping
+		m_cmRuleCounts.forEach((rule, ruleCount) -> {
+			Integer count = counts.get(rule.getLHS());
+			if (count == null) {
+				counts.put(rule.getLHS(), 0);
+			}
+
+			count += ruleCount;
+		});
+
+		m_cmRuleCounts.forEach((rule, ruleCount) -> {
+			Integer totalLHSCount = counts.get(rule.getLHS());
+
+			double logProb = -Math.log(ruleCount / (double)totalLHSCount);
+			rule.setMinusLogProb(logProb);
+		});
+	}
+
+	Dictionary<Event, Integer> counts = new Hashtable<Event, Integer>();
 
 	public void addRule(Rule r)
 	{	
@@ -149,6 +167,7 @@ public class Grammar {
 		for (int i = 0; i < theRules.size(); i++) {
 			addRule(theRules.get(i));
 		}
-	}
 
+		calc();
+	}
 }
