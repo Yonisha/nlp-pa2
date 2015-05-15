@@ -61,6 +61,7 @@ public class Train {
 
 	public List<Rule> getRules(Tree myTree)
 	{
+		myTree = binarizeTree(myTree);
 		List<Rule> theRules = new ArrayList<Rule>();
 		
 		List<Node> myNodes = myTree.getNodes();
@@ -88,5 +89,38 @@ public class Train {
 		}
 		return theRules;
 	}
-	
+
+	private Tree binarizeTree(Tree originalTree) {
+		List<Node> newNodes = new ArrayList<>();
+		List<Node> originalNodes = originalTree.getNodes();
+
+		while (!originalNodes.isEmpty()) {
+			int lastNode = originalNodes.size() - 1;
+
+			Node current = originalNodes.get(lastNode);
+
+			// TODO: what if only 1 child??
+			if (current.getDaughters().size() <= 2) {
+				newNodes.add(current);
+				originalNodes.remove(lastNode);
+			} else {
+				List<Node> daughters = current.getDaughters();
+				Node beforeLast = daughters.get(daughters.size() - 2);
+				Node last = daughters.get(daughters.size() - 1);
+
+				Node node = new Node(beforeLast.getIdentifier() + "-" + last.getIdentifier());
+				beforeLast.setParent(node);
+				last.setParent(node);
+				node.setParent(current);
+
+				daughters.remove(daughters.size() - 2);
+				daughters.remove(daughters.size() - 1);
+			}
+		}
+
+		Node rootNode = originalTree.getRoot();
+
+		return new Tree(rootNode);
+	}
+
 }
