@@ -91,50 +91,53 @@ public class Train {
 		return theRules;
 	}
 
-	private Tree binarizeTree(Tree originalTree) {
-		List<Node> newNodes = new ArrayList<>();
-		List<Node> originalNodes = originalTree.getNodes();
+	private Tree binarizeTree(Tree treeToBinarize) {
+		List<Node> originalNodes = treeToBinarize.getNodes();
 
-		while (!originalNodes.isEmpty()) {
-			int lastNode = originalNodes.size() - 1;
+		for (int i = 0; i < originalNodes.size(); i++) {
+			Node current = originalNodes.get(i);
 
-			Node current = originalNodes.get(lastNode);
-
-			// TODO: what if only 1 child??
-			if (current.getDaughters().size() <= 2) {
-				newNodes.add(current);
-				originalNodes.remove(lastNode);
-			} else {
+			for (int j = 0; j <= current.getDaughters().size() - 2; j++) {
 				List<Node> daughters = current.getDaughters();
 				Node beforeLast = daughters.get(daughters.size() - 2);
 				Node last = daughters.get(daughters.size() - 1);
 
-				Node node = new Node(beforeLast.getIdentifier() + "-" + last.getIdentifier());
-				beforeLast.setParent(node);
-				last.setParent(node);
-				node.setParent(current);
+				// Building new internal node
+				Node newNode = new Node(beforeLast.getIdentifier() + "-" + last.getIdentifier());
+				newNode.setParent(current.getParent());
+				newNode.addDaughter(beforeLast);
+				newNode.addDaughter(last);
+
+				// Adding the new node to current and removing redundant daughters
+				current.addDaughter(newNode);
 				current.removeDaughter(last);
 				current.removeDaughter(beforeLast);
+
 				if (m_h > -1){
-					node.setRoot(current.getRoot());
+					newNode.setRoot(current.getRoot());
 				}
 
 				if (m_h > 0){
-					keepTrackOfSisters(node, current, m_h);
+					keepTrackOfSisters(newNode, current, m_h);
 				}
-
 			}
 		}
 
-		Node rootNode = originalTree.getRoot();
-
-		return new Tree(rootNode);
+		return treeToBinarize;
 	}
 
 	private void keepTrackOfSisters(Node newInternalNode, Node parentNode, int wantedNumberOfSisters) {
-		int numberOfDaughters = parentNode.getDaughters().size();
-		List<Node> sistersToKeep = parentNode.getDaughters().stream().skip(numberOfDaughters - wantedNumberOfSisters - 1).collect(Collectors.toList());
+
+		int numberOfDaughtersWithoutLast = parentNode.getDaughters().size() - 1;
+		int numberOfSistersToSkip = numberOfDaughtersWithoutLast - wantedNumberOfSisters - 1;
+
+		List<Node> sistersToKeep;
+		if (numberOfSistersToSkip >= numberOfDaughtersWithoutLast || numberOfSistersToSkip < 0) {
+			sistersToKeep = parentNode.getDaughters().subList(0, numberOfDaughtersWithoutLast);
+		} else {
+			sistersToKeep = parentNode.getDaughters().subList(numberOfSistersToSkip, numberOfDaughtersWithoutLast);
+		}
+
 		newInternalNode.setSisters(sistersToKeep);
 	}
-
 }
