@@ -44,6 +44,12 @@ public class Node {
 	
 	// marks a root node
 	private boolean m_bRoot = false;
+
+	// root node
+	private Node m_nodeRoot = null;
+
+	// list of sisters
+	private List<Node> m_lstSisters = new ArrayList<Node>();
 	
 	// marks a node with a String identifier, 
 	private String m_sIdentifier = null;
@@ -76,7 +82,8 @@ public class Node {
 				Terminal tdc =(Terminal)td.clone();
 				n.addDaughter(tdc);
 				tdc.setParent(n);
-				
+				tdc.setRoot(n);
+
 			}
 			else
 			{
@@ -96,15 +103,29 @@ public class Node {
 	// add daughter at the end of the daughter's list
 	public boolean addDaughter(Node nDaughter) {
 		nDaughter.setParent(this);
+		nDaughter.setRoot(this.m_nodeRoot);
 		return m_lstDaughters.add(nDaughter);
+	}
+
+	// set sister's list
+	public void setSisters(List<Node> lstSisters) {
+		m_lstSisters = lstSisters;;
 	}
 	
 	public Node getParent() {
 		return m_nodeParent;
 	}
 
+	public Node getRoot() {
+		return m_nodeRoot;
+	}
+
 	public void setParent(Node mNodeParent) {
 		m_nodeParent = mNodeParent;
+	}
+
+	public void setRoot(Node mNodeRoot) {
+		m_nodeRoot = mNodeRoot;
 	}
 
 	// remove daughter and dominated subtree
@@ -121,6 +142,9 @@ public class Node {
 	public List<Node> getDaughters() {
 		return m_lstDaughters;
 	}
+
+	// get sisters list (referenced)
+	public List<Node> getSisters() { return m_lstSisters; }
 	
 	// a leaf node is a node with an empty list of children
 	public boolean isLeaf() {

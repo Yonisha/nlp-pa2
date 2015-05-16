@@ -4,9 +4,9 @@ import grammar.Event;
 import grammar.Grammar;
 import grammar.Rule;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import tree.Node;
 import tree.Tree;
@@ -34,6 +34,7 @@ public class Train {
      * Avoids redundant instances in memory 
      */
 	public static Train m_singTrainer = null;
+	public static int m_h = 1;
 	    
 	public static Train getInstance()
 	{
@@ -73,7 +74,7 @@ public class Train {
 				Iterator<Node> theDaughters = myNode.getDaughters().iterator();
 				StringBuffer sb = new StringBuffer();
 				while (theDaughters.hasNext()) {
-					Node n = (Node) theDaughters.next();
+					Node n = theDaughters.next();
 					sb.append(n.getIdentifier());
 					if (theDaughters.hasNext())
 						sb.append(" ");
@@ -112,15 +113,28 @@ public class Train {
 				beforeLast.setParent(node);
 				last.setParent(node);
 				node.setParent(current);
+				current.removeDaughter(last);
+				current.removeDaughter(beforeLast);
+				if (m_h > -1){
+					node.setRoot(current.getRoot());
+				}
 
-				daughters.remove(daughters.size() - 2);
-				daughters.remove(daughters.size() - 1);
+				if (m_h > 0){
+					keepTrackOfSisters(node, current, m_h);
+				}
+
 			}
 		}
 
 		Node rootNode = originalTree.getRoot();
 
 		return new Tree(rootNode);
+	}
+
+	private void keepTrackOfSisters(Node newInternalNode, Node parentNode, int wantedNumberOfSisters) {
+		int numberOfDaughters = parentNode.getDaughters().size();
+		List<Node> sistersToKeep = parentNode.getDaughters().stream().skip(numberOfDaughters - wantedNumberOfSisters - 1).collect(Collectors.toList());
+		newInternalNode.setSisters(sistersToKeep);
 	}
 
 }

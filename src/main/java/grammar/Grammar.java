@@ -1,7 +1,6 @@
 package grammar;
 
 import java.util.*;
-import java.util.function.BiConsumer;
 
 import utils.CountMap;
 
@@ -44,7 +43,7 @@ public class Grammar {
 		return m_cmRuleCounts;
 	}
 
-	private void calc() {
+	private void calcRuleProbs() {
 		// Grouping
 		m_cmRuleCounts.forEach((rule, ruleCount) -> {
 			Integer count = counts.get(rule.getLHS());
@@ -58,8 +57,8 @@ public class Grammar {
 		m_cmRuleCounts.forEach((rule, ruleCount) -> {
 			Integer totalLHSCount = counts.get(rule.getLHS());
 
-			double logProb = -Math.log(ruleCount / (double)totalLHSCount);
-			rule.setMinusLogProb(logProb);
+			double minusLogProb = -Math.log(ruleCount / (double)totalLHSCount);
+			rule.setMinusLogProb(minusLogProb);
 		});
 	}
 
@@ -168,6 +167,6 @@ public class Grammar {
 			addRule(theRules.get(i));
 		}
 
-		calc();
+		calcRuleProbs();
 	}
 }
