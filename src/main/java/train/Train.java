@@ -4,6 +4,7 @@ import grammar.Event;
 import grammar.Grammar;
 import grammar.Rule;
 
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -11,7 +12,7 @@ import java.util.stream.Stream;
 import tree.Node;
 import tree.Tree;
 import treebank.Treebank;
-
+import utils.ListExtensions;
 
 
 /**
@@ -110,11 +111,13 @@ public class Train {
 		return treeToBinarize;
 	}
 
-	private void binarizeNodeRecursive(Node current, int numberOfDaughtersInCurrentNode, String newInternalNodeId){
+	private void binarizeNodeRecursive(Node current, int numberOfDaughtersInCurrentNode, String newInternalNodeIdWithFullHistory){
 
 		List<Node> daughterOfNewInternalNode = new ArrayList<>(current.getDaughters().subList(1, numberOfDaughtersInCurrentNode));
 
-		Node newInternalNode = new Node(newInternalNodeId);
+		newInternalNodeIdWithFullHistory += current.getDaughters().get(0).getIdentifier() + "/";
+
+		Node newInternalNode = new Node(getNewInternalNodeIdByGivenH(newInternalNodeIdWithFullHistory));
 		for (int j = 0; j < daughterOfNewInternalNode.size(); j++) {
 			newInternalNode.addDaughter(daughterOfNewInternalNode.get(j));
 			current.removeDaughter(daughterOfNewInternalNode.get(j));
@@ -124,6 +127,22 @@ public class Train {
 
 		int numberOfDaughtersInNewInternalNode = newInternalNode.getDaughters().size();
 		if (numberOfDaughtersInNewInternalNode > 2)
-			binarizeNodeRecursive(newInternalNode, numberOfDaughtersInNewInternalNode, newInternalNodeId);
+			binarizeNodeRecursive(newInternalNode, numberOfDaughtersInNewInternalNode, newInternalNodeIdWithFullHistory);
+	}
+
+	private String getNewInternalNodeIdByGivenH(String newInternalNodeIdWithFullHistory){
+		StringBuilder stringBuilder = new StringBuilder();
+		List<String> histories = Arrays.asList(newInternalNodeIdWithFullHistory.split("/"));
+		List<String> relevantHistories = new ArrayList<>();
+		if (m_h > -1)
+			relevantHistories.add(histories.get(0));
+
+		relevantHistories.addAll(ListExtensions.takeRight(histories.subList(1, histories.size()), m_h));
+		for (int i = 0; i < relevantHistories.size(); i++) {
+			stringBuilder.append(relevantHistories.get(i));
+			stringBuilder.append('/');
+		}
+
+		return stringBuilder.toString();
 	}
 }
