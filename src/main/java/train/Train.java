@@ -97,47 +97,33 @@ public class Train {
 		for (int i = 0; i < originalNodes.size(); i++) {
 			Node current = originalNodes.get(i);
 
-			for (int j = 0; j <= current.getDaughters().size() - 2; j++) {
-				List<Node> daughters = current.getDaughters();
-				Node beforeLast = daughters.get(daughters.size() - 2);
-				Node last = daughters.get(daughters.size() - 1);
+			int numberOfDaughtersInCurrentNode = current.getDaughters().size();
+			// no need to binarize this node
+			if (numberOfDaughtersInCurrentNode < 3)
+				continue;
 
-				// Building new internal node
-				Node newNode = new Node(beforeLast.getIdentifier() + "-" + last.getIdentifier());
-				newNode.setParent(current.getParent());
-				newNode.addDaughter(beforeLast);
-				newNode.addDaughter(last);
+			String newInternalNodeId = current.getIdentifier() + "@/";
+			binarizeNodeRecursive(current, numberOfDaughtersInCurrentNode, newInternalNodeId);
 
-				// Adding the new node to current and removing redundant daughters
-				current.addDaughter(newNode);
-				current.removeDaughter(last);
-				current.removeDaughter(beforeLast);
-
-				if (m_h > -1){
-					newNode.setRoot(current.getRoot());
-				}
-
-				if (m_h > 0){
-					keepTrackOfSisters(newNode, current, m_h);
-				}
-			}
 		}
 
 		return treeToBinarize;
 	}
 
-	private void keepTrackOfSisters(Node newInternalNode, Node parentNode, int wantedNumberOfSisters) {
+	private void binarizeNodeRecursive(Node current, int numberOfDaughtersInCurrentNode, String newInternalNodeId){
 
-		int numberOfDaughtersWithoutLast = parentNode.getDaughters().size() - 1;
-		int numberOfSistersToSkip = numberOfDaughtersWithoutLast - wantedNumberOfSisters - 1;
+		List<Node> daughterOfNewInternalNode = new ArrayList<>(current.getDaughters().subList(1, numberOfDaughtersInCurrentNode));
 
-		List<Node> sistersToKeep;
-		if (numberOfSistersToSkip >= numberOfDaughtersWithoutLast || numberOfSistersToSkip < 0) {
-			sistersToKeep = parentNode.getDaughters().subList(0, numberOfDaughtersWithoutLast);
-		} else {
-			sistersToKeep = parentNode.getDaughters().subList(numberOfSistersToSkip, numberOfDaughtersWithoutLast);
+		Node newInternalNode = new Node(newInternalNodeId);
+		for (int j = 0; j < daughterOfNewInternalNode.size(); j++) {
+			newInternalNode.addDaughter(daughterOfNewInternalNode.get(j));
+			current.removeDaughter(daughterOfNewInternalNode.get(j));
 		}
 
-		newInternalNode.setSisters(sistersToKeep);
+		current.addDaughter(newInternalNode);
+
+		int numberOfDaughtersInNewInternalNode = newInternalNode.getDaughters().size();
+		if (numberOfDaughtersInNewInternalNode > 2)
+			binarizeNodeRecursive(newInternalNode, numberOfDaughtersInNewInternalNode, newInternalNodeId);
 	}
 }
