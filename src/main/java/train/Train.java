@@ -35,7 +35,7 @@ public class Train {
      * Avoids redundant instances in memory 
      */
 	public static Train m_singTrainer = null;
-	public static int m_h = 0;
+	public static int m_h = 2;
 	    
 	public static Train getInstance()
 	{

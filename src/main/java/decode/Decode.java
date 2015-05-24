@@ -6,6 +6,7 @@ import grammar.Rule;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import tree.Node;
 import tree.Terminal;
@@ -14,6 +15,7 @@ import tree.Tree;
 public class Decode {
 
 	public static Set<Rule> m_setGrammarRules = null;
+	public static Set<Rule> m_setUnaryGrammarRules = null;
 	public static Map<String, Set<Rule>> m_mapLexicalRules = null;
 
 	/**
@@ -29,6 +31,7 @@ public class Decode {
 			m_singDecoder = new Decode();
 			m_setGrammarRules = g.getSyntacticRules();
 			m_mapLexicalRules = g.getLexicalEntries();
+			m_setUnaryGrammarRules = m_setGrammarRules.stream().filter(r -> r.getRHS().getSymbols().size() == 1).collect(Collectors.toSet());
 		}
 		return m_singDecoder;
 	}
@@ -93,7 +96,7 @@ public class Decode {
 		populateFromLexical(preTerminalsWithProbs, input);
 		populateFromGrams(preTerminalsWithProbs);
 
-		Optional<PreTerminalWithProb> bestPreTerminal = preTerminalsWithProbs[0][0].getAllPreTerminals().stream().collect(Collectors.maxBy(Comparator.comparingDouble(c -> c.getAccumulatedProb())));
+		Optional<PreTerminalWithProb> bestPreTerminal = preTerminalsWithProbs[0][0].getAllPreTerminals().stream().collect(Collectors.minBy(Comparator.comparingDouble(c -> c.getAccumulatedProb())));
 		if (bestPreTerminal.isPresent())
 		{
 			String s = bestPreTerminal.get().toStringSubtree();
@@ -142,6 +145,8 @@ public class Decode {
 						}
 					}
 				}
+
+				addAllUnaryPreTerminals(preTerminalsWithProbs, i, k);
 			}
 
 
@@ -174,6 +179,54 @@ public class Decode {
 		return matchingRules;
 	}
 
+	private void addAllUnaryPreTerminals(Cell[][] preTerminalsWithProbs, int i, int k) {
+		Stack<PreTerminalWithProb> unaryPreTerminalsStack = new Stack<>();
+		List<PreTerminalWithProb> allPreTerminalsInCell = preTerminalsWithProbs[i][k].getAllPreTerminals();
+
+		// Pushing all new unaries to a stack
+		for (PreTerminalWithProb preTerminal : allPreTerminalsInCell){
+			List<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(preTerminal);
+			for (PreTerminalWithProb preTerminalWithProb : unaryRulesForSinglePreTerminal) {
+				unaryPreTerminalsStack.push(preTerminalWithProb);
+			}
+		}
+
+		// Iterating the stack to find all unaries
+		while (!unaryPreTerminalsStack.isEmpty()) {
+			PreTerminalWithProb unary = unaryPreTerminalsStack.pop();
+
+			// check if exists in the current cell
+//			boolean preTerminalWithSameRhsExists = preTerminalsWithProbs[i][k].isPreTerminalExists(unary);
+//			if (preTerminalWithSameRhsExists) {
+//				continue;
+//			}
+
+			// check if rhs and lhs are same
+			boolean isUnaryRuleRecursive = isUnaryRuleRecursive(unary.getPreTerminal(), unary);
+			if (isUnaryRuleRecursive) {
+				continue;
+			}
+
+			preTerminalsWithProbs[i][k].addPreTerminal(unary);
+
+			List<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(unary);
+			for (PreTerminalWithProb newPreTerminal : unaryRulesForSinglePreTerminal){
+				preTerminalsWithProbs[i][k].addPreTerminal(newPreTerminal);
+				unaryPreTerminalsStack.push(newPreTerminal);
+			}
+		}
+	}
+
+	private boolean isUnaryRuleRecursive(String lhs, PreTerminalWithProb unary){
+		if (unary.getDaughters().size() != 1)
+			return false;
+
+		if (lhs.equalsIgnoreCase(unary.getDaughters().get(0).getPreTerminal()))
+			return true;
+
+		return isUnaryRuleRecursive(lhs, unary.getDaughters().get(0));
+	}
+
 	private void populateFromLexical(Cell[][] preTerminalsWithProbs, List<String> input) {
 		int numOfWords = input.size();
 		int startLevel = numOfWords - 1;
@@ -191,9 +244,30 @@ public class Decode {
 				String preTerminal = r.getLHS().getSymbols().get(0);
 				double minusLogProb = r.getMinusLogProb();
 
-				PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, minusLogProb, new ArrayList<PreTerminalWithProb>());
+				List<PreTerminalWithProb> daughters = new ArrayList<>();
+				daughters.add(new PreTerminalWithProb(terminal, 0, new ArrayList<>()));
+				PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, minusLogProb, daughters);
 				preTerminalsWithProbs[startLevel][terminalIndex].addPreTerminal(preTerminalWithProb);
 			});
+
+			addAllUnaryPreTerminals(preTerminalsWithProbs, startLevel, terminalIndex);
 		}
+	}
+
+	private List<PreTerminalWithProb> getUnaryRulesForSinglePreTerminal(PreTerminalWithProb terminalWithProb){
+		List<Rule> matchingUnaryGrammarRules =  m_setUnaryGrammarRules.stream().filter(r -> r.getRHS().getSymbols().get(0).equals(terminalWithProb.getPreTerminal())).collect(Collectors.toList());
+		List<PreTerminalWithProb> newPreTerminals = new ArrayList<>();
+
+		matchingUnaryGrammarRules.forEach(r -> {
+			String preTerminal = r.getLHS().getSymbols().get(0);
+			double minusLogProb = r.getMinusLogProb() + terminalWithProb.getProb();
+
+			List<PreTerminalWithProb> daughters = new ArrayList<PreTerminalWithProb>();
+			daughters.add(terminalWithProb);
+			PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, minusLogProb, daughters);
+			newPreTerminals.add(preTerminalWithProb);
+		});
+
+		return newPreTerminals;
 	}
 }

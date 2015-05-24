@@ -29,6 +29,10 @@ public class PreTerminalWithProb {
         return this.preTerminal;
     }
 
+    public double getProb() {
+        return this.prob;
+    }
+
     public double getAccumulatedProb() {
         return this.accumulatedProb;
     }
