@@ -15,33 +15,6 @@ public class Cell {
         return this.preTerminalsWithProbs;
     }
 
-    public boolean isPreTerminalExists(PreTerminalWithProb newPreTerminalWithProb) {
-        for (PreTerminalWithProb preTerminalWithProb : this.preTerminalsWithProbs) {
-            if (isPreTerminalExistsInternal(preTerminalWithProb, preTerminalWithProb, newPreTerminalWithProb))
-                return true;
-
-            if (preTerminalWithProb.getPreTerminal().equalsIgnoreCase(newPreTerminalWithProb.getPreTerminal())
-                    && preTerminalWithProb.getDaughters().size() == 1
-                    && preTerminalWithProb.getDaughters().get(0).getPreTerminal().equalsIgnoreCase(newPreTerminalWithProb.getDaughters().get(0).getPreTerminal())){
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boolean isPreTerminalExistsInternal(PreTerminalWithProb existing, PreTerminalWithProb existingDaughter, PreTerminalWithProb newP) {
-        if (existingDaughter.getDaughters().size() != 1)
-            return false;
-
-        if (existingDaughter.getDaughters().get(0).getPreTerminal().equalsIgnoreCase(newP.getPreTerminal())
-                && existing.getPreTerminal().equalsIgnoreCase(newP.getDaughters().get(0).getPreTerminal())) {
-            return true;
-        }
-
-        return isPreTerminalExistsInternal(existing, existingDaughter.getDaughters().get(0), newP);
-    }
-
     private void addOrReplace(PreTerminalWithProb preTerminalWithProb){
         List<PreTerminalWithProb> preTerminalsWithSameName = this.getAllPreTerminals().stream().filter(t -> t.getPreTerminal().equalsIgnoreCase(preTerminalWithProb.getPreTerminal())).collect(Collectors.toList());
         if (preTerminalsWithSameName.isEmpty()){

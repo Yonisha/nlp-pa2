@@ -127,6 +127,9 @@ public class Decode {
 					List<PreTerminalWithProb> allPreTerminalsForFirstHead = preTerminalsWithProbs[firstTreeHeadHeight][firstTreeHeadDepth].getAllPreTerminals();
 					List<PreTerminalWithProb> allPreTerminalsForSecondHead = preTerminalsWithProbs[secondTreeHeadHeight][secondTreeHeadDepth].getAllPreTerminals();
 
+					if (allPreTerminalsForFirstHead.isEmpty() || allPreTerminalsForSecondHead.isEmpty())
+						continue;
+
 					for (int l = 0; l < allPreTerminalsForFirstHead.size(); l++) {
 						for (int m = 0; m < allPreTerminalsForSecondHead.size(); m++) {
 							PreTerminalWithProb firstHeadPreTerminalWithProb = allPreTerminalsForFirstHead.get(l);
@@ -166,7 +169,7 @@ public class Decode {
 		for (Rule rule : m_setGrammarRules) {
 			List<String> symbols = rule.getRHS().getSymbols();
 
-			// TODO: how to handle unary rules? Mor to fix.
+			// unary rules are handled afterwards
 			if (symbols.size() != 2) {
 				continue;
 			}
@@ -194,12 +197,6 @@ public class Decode {
 		// Iterating the stack to find all unaries
 		while (!unaryPreTerminalsStack.isEmpty()) {
 			PreTerminalWithProb unary = unaryPreTerminalsStack.pop();
-
-			// check if exists in the current cell
-//			boolean preTerminalWithSameRhsExists = preTerminalsWithProbs[i][k].isPreTerminalExists(unary);
-//			if (preTerminalWithSameRhsExists) {
-//				continue;
-//			}
 
 			// check if rhs and lhs are same
 			boolean isUnaryRuleRecursive = isUnaryRuleRecursive(unary.getPreTerminal(), unary);
