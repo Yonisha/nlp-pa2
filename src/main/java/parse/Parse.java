@@ -71,13 +71,16 @@ public class Parse {
 
 	private static Tree reBinarizeTree(Tree tree){
 		List<Node> nodes = tree.getNodes();
-		Node rootNode = nodes.get(1);
-		if (rootNode.getIdentifier().contains("@"))
-			rootNode.setIdentifier(rootNode.getIdentifier().split("@")[0]);
-		for (int i = 2; i < nodes.size(); i++) {
+
+		for (int i = 1; i < nodes.size(); i++) {
 			Node currentNode = nodes.get(i);
 			if (!currentNode.getIdentifier().contains("@"))
 				continue;
+
+			if (i == 1){
+				currentNode.setIdentifier(currentNode.getIdentifier().split("@")[0]);
+				continue;
+			}
 
 			// remove current node from its parent
 			currentNode.getParent().getDaughters().remove(currentNode.getParent().getDaughters().size()-1);
