@@ -26,9 +26,12 @@ public class Grammar {
 	protected Set<Rule> m_setLexicalRules = new HashSet<Rule>();
 	protected CountMap<Rule> m_cmRuleCounts = new CountMap<Rule>();
 	protected Map<String, Set<Rule>> m_lexLexicalEntries = new HashMap<String, Set<Rule>>();
+
+	private boolean m_useSmoothing;
 		
-	public Grammar() {
+	public Grammar(boolean useSmoothing) {
 		super();
+		m_useSmoothing = useSmoothing;
 	}
 	
 	public Map<String, Set<Rule>> getLexicalEntries() {
@@ -41,6 +44,29 @@ public class Grammar {
 
 	public CountMap<Rule> getRuleCounts() {
 		return m_cmRuleCounts;
+	}
+
+	private void addSmoothing() {
+
+		if (!m_useSmoothing){
+			HashSet<Rule> rulesForUnknowns = new HashSet<>();
+			rulesForUnknowns.add(new Rule("NN", "UNK", true));
+			m_lexLexicalEntries.put("UNK", rulesForUnknowns);
+			return;
+		}
+
+		Set<Rule> allUnknownRules = new HashSet<>();
+		Set<String> allSeenWords = m_lexLexicalEntries.keySet();
+		List<String> allSeenWordsThatAppearOnce = new ArrayList<>();
+		for (String seenWord : allSeenWords){
+			Set<Rule> rulesForCurrentKey = m_lexLexicalEntries.get(seenWord);
+			if (rulesForCurrentKey.size() == 1){
+				allUnknownRules.add(new Rule(rulesForCurrentKey.iterator().next().getLHS().getSymbols().get(0), "UNK", true));
+				allSeenWordsThatAppearOnce.add(seenWord);
+			}
+		}
+		allSeenWordsThatAppearOnce.stream().forEach(w -> m_lexLexicalEntries.remove(w));
+		m_lexLexicalEntries.put("UNK", allUnknownRules);
 	}
 
 	private void calcRuleProbs() {
@@ -167,6 +193,7 @@ public class Grammar {
 			addRule(theRules.get(i));
 		}
 
+		addSmoothing();
 		calcRuleProbs();
 	}
 }

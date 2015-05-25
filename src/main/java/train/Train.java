@@ -35,12 +35,17 @@ public class Train {
      * Avoids redundant instances in memory 
      */
 	public static Train m_singTrainer = null;
+	private static boolean m_useSmoothing;
+
+	private Train(boolean useSmoothing){
+		m_useSmoothing = useSmoothing;
+	}
 	    
-	public static Train getInstance()
+	public static Train getInstance(boolean useSmoothing)
 	{
 		if (m_singTrainer == null)
 		{
-			m_singTrainer = new Train();
+			m_singTrainer = new Train(useSmoothing);
 		}
 		return m_singTrainer;
 	}
@@ -51,7 +56,7 @@ public class Train {
 	
 	public Grammar train(Treebank myTreebank)
 	{
-		Grammar myGrammar = new Grammar();
+		Grammar myGrammar = new Grammar(m_useSmoothing);
 		for (int i = 0; i < myTreebank.size(); i++) {
 			Tree myTree = myTreebank.getAnalyses().get(i);
 			List<Rule> theRules = getRules(myTree);

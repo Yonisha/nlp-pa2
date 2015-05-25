@@ -239,8 +239,7 @@ public class Decode {
 			Set<Rule> lexicalRules = m_mapLexicalRules.get(terminal);
 
 			if (lexicalRules == null) {
-				lexicalRules = new HashSet<>();
-				lexicalRules.add(new Rule("NN", terminal, true));
+				lexicalRules = m_mapLexicalRules.get("UNK");
 			}
 
 			final int terminalIndex = i;

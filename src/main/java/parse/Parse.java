@@ -36,7 +36,10 @@ public class Parse {
 
 		// TODO move
 		int m_h = 0;
-		
+		boolean m_useSmoothing = false;
+		System.out.println("Using horizontal markovization in level: " + m_h);
+		System.out.println("Using smoothing: " + m_useSmoothing);
+
 		// 1. read input
 		Treebank myGoldTreebank = TreebankReader.getInstance().read(true, args[0]);
 		Treebank myTrainTreebank = TreebankReader.getInstance().read(true, args[1]);
@@ -46,7 +49,7 @@ public class Parse {
 		myTrainTreebank.getAnalyses().stream().forEach(t -> binarizedTrainTreebank.add(binarizeTree(t, m_h)));
 		
 		// 3. train
-		Grammar myGrammar = Train.getInstance().train(myTrainTreebank);
+		Grammar myGrammar = Train.getInstance(m_useSmoothing).train(myTrainTreebank);
 		
 		// 4. decode
 		List<Tree> myParseTrees = new ArrayList<Tree>();		
@@ -63,13 +66,13 @@ public class Parse {
 		}
 		
 		// 5. de-transform trees
-		List<Tree> myParseTreesUnBinarized = myParseTrees.stream().map(pt -> reBinarizeTree(pt)).collect(Collectors.toList());
+		List<Tree> myParseTreesUnBinarized = myParseTrees.stream().map(pt -> deBinarizeTree(pt)).collect(Collectors.toList());
 
 		// 6. write output
 		writeOutput(args[2], myGrammar, myParseTreesUnBinarized);
 	}
 
-	private static Tree reBinarizeTree(Tree tree){
+	private static Tree deBinarizeTree(Tree tree){
 		List<Node> nodes = tree.getNodes();
 
 		for (int i = 1; i < nodes.size(); i++) {
