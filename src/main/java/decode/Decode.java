@@ -17,6 +17,7 @@ public class Decode {
 	public static Set<Rule> m_setGrammarRules = null;
 	public static Set<Rule> m_setUnaryGrammarRules = null;
 	public static Map<String, Set<Rule>> m_mapLexicalRules = null;
+	private static Map<String, Set<Rule>> m_syntacticRulesByRhsAsKey = new HashMap<String, Set<Rule>>();
 
 	/**
 	 * Implementation of a singleton pattern
@@ -28,12 +29,32 @@ public class Decode {
 	{
 		if (m_singDecoder == null)
 		{
+			System.out.println("Started creating Decoder");
 			m_singDecoder = new Decode();
 			m_setGrammarRules = g.getSyntacticRules();
 			m_mapLexicalRules = g.getLexicalEntries();
 			m_setUnaryGrammarRules = m_setGrammarRules.stream().filter(r -> r.getRHS().getSymbols().size() == 1).collect(Collectors.toSet());
+			m_syntacticRulesByRhsAsKey = createMapForSyntacticRulsByRhs();
+			System.out.println("Finished creating Decoder");
+
 		}
 		return m_singDecoder;
+	}
+
+	private static Map<String, Set<Rule>> createMapForSyntacticRulsByRhs() {
+		Map<String, Set<Rule>> map = new HashMap<>();
+		for(Rule rule : m_setGrammarRules){
+			String rhs = rule.getRHS().toString();
+			if (map.containsKey(rhs))
+				map.get(rhs).add(rule);
+			else{
+				Set<Rule> setToAdd = new HashSet<>();
+				setToAdd.add(rule);
+				map.put(rhs, setToAdd);
+			}
+		}
+
+		return map;
 	}
 
 	public Tree decode(List<String> input){
@@ -135,7 +156,7 @@ public class Decode {
 							PreTerminalWithProb firstHeadPreTerminalWithProb = allPreTerminalsForFirstHead.get(l);
 							PreTerminalWithProb secondHeadPreTerminalWithProb = allPreTerminalsForSecondHead.get(m);
 
-							List<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb);
+							Set<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb);
 
 							List<PreTerminalWithProb> daughters = new ArrayList<>();
 							daughters.add(firstHeadPreTerminalWithProb);
@@ -163,23 +184,12 @@ public class Decode {
 		System.out.print("");
 	}
 
-	private List<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second) {
-		List<Rule> matchingRules = new ArrayList<>();
+	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second) {
+		Set<Rule> matchingRules = m_syntacticRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
+		if (matchingRules != null)
+			return matchingRules;
 
-		for (Rule rule : m_setGrammarRules) {
-			List<String> symbols = rule.getRHS().getSymbols();
-
-			// unary rules are handled afterwards
-			if (symbols.size() != 2) {
-				continue;
-			}
-
-			if (symbols.get(0).equalsIgnoreCase(first.getPreTerminal()) && symbols.get(1).equalsIgnoreCase(second.getPreTerminal())) {
-				matchingRules.add(rule);
-			}
-		}
-
-		return matchingRules;
+		return new HashSet<>();
 	}
 
 	private void addAllUnaryPreTerminals(Cell[][] preTerminalsWithProbs, int i, int k) {
