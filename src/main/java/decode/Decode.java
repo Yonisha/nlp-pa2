@@ -90,8 +90,6 @@ public class Decode {
 
 	private Tree buildParseChartMatrix(List<String> input) {
 
-		int numberOfTreesWithDummyParsing = 0;
-
 		int numOfWords = input.size();
 		Cell[][] preTerminalsWithProbs = new Cell[numOfWords][numOfWords];
 
@@ -113,7 +111,6 @@ public class Decode {
 			top.addDaughter(rootNode);
 			tree = new Tree(top);
 		}else{
-			numberOfTreesWithDummyParsing++;
 			// Done: Baseline Decoder
 			//       Returns a flat tree with NN labels on all leaves
 			tree = new Tree(new Node("TOP"));
@@ -127,7 +124,6 @@ public class Decode {
 			}
 		}
 
-		System.out.println("Number of trees with dummy parsing is " + numberOfTreesWithDummyParsing);
 		return tree;
 	}
 

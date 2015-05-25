@@ -35,7 +35,6 @@ public class Train {
      * Avoids redundant instances in memory 
      */
 	public static Train m_singTrainer = null;
-	public static int m_h = 0;
 	    
 	public static Train getInstance()
 	{
@@ -63,7 +62,6 @@ public class Train {
 
 	public List<Rule> getRules(Tree myTree)
 	{
-		myTree = binarizeTree(myTree);
 		List<Rule> theRules = new ArrayList<Rule>();
 		
 		List<Node> myNodes = myTree.getNodes();
@@ -90,59 +88,5 @@ public class Train {
 			}	
 		}
 		return theRules;
-	}
-
-	private Tree binarizeTree(Tree treeToBinarize) {
-		List<Node> originalNodes = treeToBinarize.getNodes();
-
-		for (int i = 0; i < originalNodes.size(); i++) {
-			Node current = originalNodes.get(i);
-
-			int numberOfDaughtersInCurrentNode = current.getDaughters().size();
-			// no need to binarize this node
-			if (numberOfDaughtersInCurrentNode < 3)
-				continue;
-
-			String newInternalNodeId = current.getIdentifier() + "@/";
-			binarizeNodeRecursive(current, numberOfDaughtersInCurrentNode, newInternalNodeId);
-
-		}
-
-		return treeToBinarize;
-	}
-
-	private void binarizeNodeRecursive(Node current, int numberOfDaughtersInCurrentNode, String newInternalNodeIdWithFullHistory){
-
-		List<Node> daughterOfNewInternalNode = new ArrayList<>(current.getDaughters().subList(1, numberOfDaughtersInCurrentNode));
-
-		newInternalNodeIdWithFullHistory += current.getDaughters().get(0).getIdentifier() + "/";
-
-		Node newInternalNode = new Node(getNewInternalNodeIdByGivenH(newInternalNodeIdWithFullHistory));
-		for (int j = 0; j < daughterOfNewInternalNode.size(); j++) {
-			newInternalNode.addDaughter(daughterOfNewInternalNode.get(j));
-			current.removeDaughter(daughterOfNewInternalNode.get(j));
-		}
-
-		current.addDaughter(newInternalNode);
-
-		int numberOfDaughtersInNewInternalNode = newInternalNode.getDaughters().size();
-		if (numberOfDaughtersInNewInternalNode > 2)
-			binarizeNodeRecursive(newInternalNode, numberOfDaughtersInNewInternalNode, newInternalNodeIdWithFullHistory);
-	}
-
-	private String getNewInternalNodeIdByGivenH(String newInternalNodeIdWithFullHistory){
-		StringBuilder stringBuilder = new StringBuilder();
-		List<String> histories = Arrays.asList(newInternalNodeIdWithFullHistory.split("/"));
-		List<String> relevantHistories = new ArrayList<>();
-		if (m_h > -1)
-			relevantHistories.add(histories.get(0));
-
-		relevantHistories.addAll(ListExtensions.takeRight(histories.subList(1, histories.size()), m_h));
-		for (int i = 0; i < relevantHistories.size(); i++) {
-			stringBuilder.append(relevantHistories.get(i));
-			stringBuilder.append('/');
-		}
-
-		return stringBuilder.toString();
 	}
 }

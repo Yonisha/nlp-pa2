@@ -3,33 +3,22 @@ package parse;
 import grammar.Grammar;
 import grammar.Rule;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import bracketimport.TreebankReader;
 
 import decode.Decode;
 import train.Train;
 
+import tree.Node;
 import tree.Tree;
 import treebank.Treebank;
 
 import utils.LineWriter;
+import utils.ListExtensions;
 
 public class Parse {
-
-	/**
-	 *
-	 * @author Reut Tsarfaty
-	 * @date 27 April 2013
-	 * 
-	 * @param train-set 
-	 * @param test-set 
-	 * @param exp-name
-	 * 
-	 */
 	
 	public static void main(String[] args) {
 		
@@ -44,13 +33,17 @@ public class Parse {
 			System.out.println("Usage: Parse <goldset> <trainset> <experiment-identifier-string>");
 			return;
 		}
+
+		// TODO move
+		int m_h = 0;
 		
 		// 1. read input
 		Treebank myGoldTreebank = TreebankReader.getInstance().read(true, args[0]);
 		Treebank myTrainTreebank = TreebankReader.getInstance().read(true, args[1]);
 		
 		// 2. transform trees
-		// TODO
+		Treebank binarizedTrainTreebank = new Treebank();
+		myTrainTreebank.getAnalyses().stream().forEach(t -> binarizedTrainTreebank.add(binarizeTree(t, m_h)));
 		
 		// 3. train
 		Grammar myGrammar = Train.getInstance().train(myTrainTreebank);
@@ -59,18 +52,97 @@ public class Parse {
 		List<Tree> myParseTrees = new ArrayList<Tree>();		
 		for (int i = 0; i < myGoldTreebank.size(); i++) {
 			List<String> mySentence = myGoldTreebank.getAnalyses().get(i).getYield();
+			if (mySentence.size() > 40)
+			{
+				myParseTrees.add(new Tree(new Node("TOP_BIG")));
+				continue;
+			}
+
 			Tree myParseTree = Decode.getInstance(myGrammar).decode(mySentence);
 			myParseTrees.add(myParseTree);
 		}
 		
 		// 5. de-transform trees
-		// TODO
-		
+		List<Tree> myParseTreesUnBinarized = myParseTrees.stream().map(pt -> reBinarizeTree(pt)).collect(Collectors.toList());
+
 		// 6. write output
-		writeOutput(args[2], myGrammar, myParseTrees);	
+		writeOutput(args[2], myGrammar, myParseTreesUnBinarized);
 	}
-	
-	
+
+	private static Tree reBinarizeTree(Tree tree){
+		List<Node> nodes = tree.getNodes();
+		Node rootNode = nodes.get(1);
+		if (rootNode.getIdentifier().contains("@"))
+			rootNode.setIdentifier(rootNode.getIdentifier().split("@")[0]);
+		for (int i = 2; i < nodes.size(); i++) {
+			Node currentNode = nodes.get(i);
+			if (!currentNode.getIdentifier().contains("@"))
+				continue;
+
+			// remove current node from its parent
+			currentNode.getParent().getDaughters().remove(currentNode.getParent().getDaughters().size()-1);
+			// add daughters of this node to the parent
+			currentNode.getDaughters().forEach(d -> currentNode.getParent().addDaughter(d));
+		}
+
+		return tree;
+	}
+
+	private static Tree binarizeTree(Tree tree, int m_h) {
+		List<Node> originalNodes = tree.getNodes();
+
+		for (int i = 0; i < originalNodes.size(); i++) {
+			Node current = originalNodes.get(i);
+
+			int numberOfDaughtersInCurrentNode = current.getDaughters().size();
+			// no need to binarize this node
+			if (numberOfDaughtersInCurrentNode < 3)
+				continue;
+
+			String newInternalNodeId = current.getIdentifier() + "@/";
+			binarizeNodeRecursive(current, numberOfDaughtersInCurrentNode, newInternalNodeId, m_h);
+
+		}
+
+		return tree;
+	}
+
+	private static void binarizeNodeRecursive(Node current, int numberOfDaughtersInCurrentNode, String newInternalNodeIdWithFullHistory, int m_h){
+
+		List<Node> daughterOfNewInternalNode = new ArrayList<>(current.getDaughters().subList(1, numberOfDaughtersInCurrentNode));
+
+		newInternalNodeIdWithFullHistory += current.getDaughters().get(0).getIdentifier() + "/";
+
+		Node newInternalNode = new Node(getNewInternalNodeIdByGivenH(newInternalNodeIdWithFullHistory, m_h));
+		for (int j = 0; j < daughterOfNewInternalNode.size(); j++) {
+			newInternalNode.addDaughter(daughterOfNewInternalNode.get(j));
+			current.removeDaughter(daughterOfNewInternalNode.get(j));
+		}
+
+		current.addDaughter(newInternalNode);
+
+		int numberOfDaughtersInNewInternalNode = newInternalNode.getDaughters().size();
+		if (numberOfDaughtersInNewInternalNode > 2)
+			binarizeNodeRecursive(newInternalNode, numberOfDaughtersInNewInternalNode, newInternalNodeIdWithFullHistory, m_h);
+	}
+
+	private static String getNewInternalNodeIdByGivenH(String newInternalNodeIdWithFullHistory, int m_h){
+		StringBuilder stringBuilder = new StringBuilder();
+		List<String> histories = Arrays.asList(newInternalNodeIdWithFullHistory.split("/"));
+		List<String> relevantHistories = new ArrayList<>();
+		if (m_h > -1)
+			relevantHistories.add(histories.get(0));
+
+		relevantHistories.addAll(ListExtensions.takeRight(histories.subList(1, histories.size()), m_h));
+		for (int i = 0; i < relevantHistories.size(); i++) {
+			stringBuilder.append(relevantHistories.get(i));
+			stringBuilder.append('/');
+		}
+
+		return stringBuilder.toString();
+	}
+
+
 	/**
 	 * Writes output to files:
 	 * = the trees are written into a .parsed file
