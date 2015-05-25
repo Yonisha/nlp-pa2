@@ -64,47 +64,34 @@ public class Decode {
 		}
 
 		System.out.println();
-		// Done: Baseline Decoder
-		//       Returns a flat tree with NN labels on all leaves
-
-		Tree t = new Tree(new Node("TOP"));
-//    Iterator<String> theInput = input.iterator();
-//    while (theInput.hasNext()) {
-//       String theWord = (String) theInput.next();
-//       Node preTerminal = new Node("NN");
-//       Terminal terminal = new Terminal(theWord);
-//       preTerminal.addDaughter(terminal);
-//       t.getRoot().addDaughter(preTerminal);
-//    }
 
 		// TODO: CYK decoder
-		Cell[][] cells = buildParseChartMatrix(input);
-
-//    for (int i = 0; i < cells.length; i++) {
-//       for (int j = 0; j < cells.length; j++) {
-//          System.out.print("--");
-//          Cell cell = cells[i][j];
-//
-//          if (cell.getAllPreTerminals().isEmpty()) {
-//             System.out.print("X");
-//          }
-//
-//          for (PreTerminalWithProb preTerminalWithProb : cell.getAllPreTerminals()) {
-//             System.out.print(preTerminalWithProb.getPreTerminal() + "|");
-//          }
-//
-//          System.out.print("\t");
-//       }
-//
-//       System.out.println();
-//    }
-
-//    System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-		return t;
-
+		Tree parsedTree = buildParseChartMatrix(input);
+		return parsedTree;
 	}
 
-	private Cell[][] buildParseChartMatrix(List<String> input) {
+	private Node buildNodeFromPreTerminal(PreTerminalWithProb preTerminal){
+
+		Node node = new Node(preTerminal.getPreTerminal());
+
+		if (preTerminal.getDaughters().isEmpty())
+			return node;
+
+		Node firstDaughter = buildNodeFromPreTerminal(preTerminal.getDaughters().get(0));
+		node.addDaughter(firstDaughter);
+
+		if (preTerminal.getDaughters().size() == 2){
+			Node secondDaughter = buildNodeFromPreTerminal(preTerminal.getDaughters().get(1));
+			node.addDaughter(secondDaughter);
+		}
+
+		return node;
+	}
+
+	private Tree buildParseChartMatrix(List<String> input) {
+
+		int numberOfTreesWithDummyParsing = 0;
+
 		int numOfWords = input.size();
 		Cell[][] preTerminalsWithProbs = new Cell[numOfWords][numOfWords];
 
@@ -118,16 +105,30 @@ public class Decode {
 		populateFromGrams(preTerminalsWithProbs);
 
 		Optional<PreTerminalWithProb> bestPreTerminal = preTerminalsWithProbs[0][0].getAllPreTerminals().stream().collect(Collectors.minBy(Comparator.comparingDouble(c -> c.getAccumulatedProb())));
+		Tree tree;
 		if (bestPreTerminal.isPresent())
 		{
-			String s = bestPreTerminal.get().toStringSubtree();
-
+			Node rootNode = buildNodeFromPreTerminal(bestPreTerminal.get());
+			Node top = new Node("TOP");
+			top.addDaughter(rootNode);
+			tree = new Tree(top);
 		}else{
-			System.out.println("Problem with sentence ");
-			input.stream().forEach(w -> System.out.print(w + " "));
+			numberOfTreesWithDummyParsing++;
+			// Done: Baseline Decoder
+			//       Returns a flat tree with NN labels on all leaves
+			tree = new Tree(new Node("TOP"));
+			Iterator<String> theInput = input.iterator();
+			while (theInput.hasNext()) {
+				String theWord = (String) theInput.next();
+				Node preTerminal = new Node("NN");
+				Terminal terminal = new Terminal(theWord);
+				preTerminal.addDaughter(terminal);
+				tree.getRoot().addDaughter(preTerminal);
+			}
 		}
 
-		return preTerminalsWithProbs;
+		System.out.println("Number of trees with dummy parsing is " + numberOfTreesWithDummyParsing);
+		return tree;
 	}
 
 	private void populateFromGrams(Cell[][] preTerminalsWithProbs) {
