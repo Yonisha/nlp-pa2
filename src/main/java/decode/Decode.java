@@ -15,9 +15,9 @@ import tree.Tree;
 public class Decode {
 
 	public static Set<Rule> m_setGrammarRules = null;
-	public static Set<Rule> m_setUnaryGrammarRules = null;
+	public static Map<String, Set<Rule>> m_syntacticUnaryRulesByRhsAsKey = null;
 	public static Map<String, Set<Rule>> m_mapLexicalRules = null;
-	private static Map<String, Set<Rule>> m_syntacticRulesByRhsAsKey = new HashMap<String, Set<Rule>>();
+	private static Map<String, Set<Rule>> m_syntacticBinaryRulesByRhsAsKey = null;
 
 	/**
 	 * Implementation of a singleton pattern
@@ -33,17 +33,20 @@ public class Decode {
 			m_singDecoder = new Decode();
 			m_setGrammarRules = g.getSyntacticRules();
 			m_mapLexicalRules = g.getLexicalEntries();
-			m_setUnaryGrammarRules = m_setGrammarRules.stream().filter(r -> r.getRHS().getSymbols().size() == 1).collect(Collectors.toSet());
-			m_syntacticRulesByRhsAsKey = createMapForSyntacticRulsByRhs();
+			m_syntacticUnaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(1);
+			m_syntacticBinaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(2);
 			System.out.println("Finished creating Decoder");
 
 		}
 		return m_singDecoder;
 	}
 
-	private static Map<String, Set<Rule>> createMapForSyntacticRulsByRhs() {
+	private static Map<String, Set<Rule>> createMapForSyntacticRulesWithGivenLengthByRhs(int ruleRhsLength) {
 		Map<String, Set<Rule>> map = new HashMap<>();
 		for(Rule rule : m_setGrammarRules){
+			if (rule.getRHS().getSymbols().size() != ruleRhsLength)
+				continue;
+
 			String rhs = rule.getRHS().toString();
 			if (map.containsKey(rhs))
 				map.get(rhs).add(rule);
@@ -56,6 +59,7 @@ public class Decode {
 
 		return map;
 	}
+
 
 	public Tree decode(List<String> input){
 
@@ -170,19 +174,11 @@ public class Decode {
 				addAllUnaryPreTerminals(preTerminalsWithProbs, i, k);
 			}
 
-
-			// Print row
-//		  for (int j = 0; j < preTerminalsWithProbs.length; j++) {
-//			 List<PreTerminalWithProb> allPreTerminals = preTerminalsWithProbs[i][j].getAllPreTerminals();
-//			 allPreTerminals.forEach(p -> System.out.print(p.getPreTerminal() + "\t"));
-//		  }
 		}
-
-		System.out.print("");
 	}
 
 	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second) {
-		Set<Rule> matchingRules = m_syntacticRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
+		Set<Rule> matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
 		if (matchingRules != null)
 			return matchingRules;
 
@@ -195,7 +191,7 @@ public class Decode {
 
 		// Pushing all new unaries to a stack
 		for (PreTerminalWithProb preTerminal : allPreTerminalsInCell){
-			List<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(preTerminal);
+			Set<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(preTerminal);
 			for (PreTerminalWithProb preTerminalWithProb : unaryRulesForSinglePreTerminal) {
 				unaryPreTerminalsStack.push(preTerminalWithProb);
 			}
@@ -213,7 +209,7 @@ public class Decode {
 
 			preTerminalsWithProbs[i][k].addPreTerminal(unary);
 
-			List<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(unary);
+			Set<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(unary);
 			for (PreTerminalWithProb newPreTerminal : unaryRulesForSinglePreTerminal){
 				preTerminalsWithProbs[i][k].addPreTerminal(newPreTerminal);
 				unaryPreTerminalsStack.push(newPreTerminal);
@@ -242,14 +238,12 @@ public class Decode {
 				lexicalRules = m_mapLexicalRules.get("UNK");
 			}
 
+			List<PreTerminalWithProb> daughters = new ArrayList<>();
+			daughters.add(new PreTerminalWithProb(terminal, 0, new ArrayList<>()));
 			final int terminalIndex = i;
 			lexicalRules.forEach(r -> {
 				String preTerminal = r.getLHS().getSymbols().get(0);
-				double minusLogProb = r.getMinusLogProb();
-
-				List<PreTerminalWithProb> daughters = new ArrayList<>();
-				daughters.add(new PreTerminalWithProb(terminal, 0, new ArrayList<>()));
-				PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, minusLogProb, daughters);
+				PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, r.getMinusLogProb(), daughters);
 				preTerminalsWithProbs[startLevel][terminalIndex].addPreTerminal(preTerminalWithProb);
 			});
 
@@ -257,17 +251,19 @@ public class Decode {
 		}
 	}
 
-	private List<PreTerminalWithProb> getUnaryRulesForSinglePreTerminal(PreTerminalWithProb terminalWithProb){
-		List<Rule> matchingUnaryGrammarRules =  m_setUnaryGrammarRules.stream().filter(r -> r.getRHS().getSymbols().get(0).equals(terminalWithProb.getPreTerminal())).collect(Collectors.toList());
-		List<PreTerminalWithProb> newPreTerminals = new ArrayList<>();
+	private Set<PreTerminalWithProb> getUnaryRulesForSinglePreTerminal(PreTerminalWithProb terminalWithProb){
+		Set<Rule> matchingUnaryGrammarRules =  m_syntacticUnaryRulesByRhsAsKey.get(terminalWithProb.getPreTerminal());
+		if (matchingUnaryGrammarRules == null)
+			return new HashSet<>();
+
+		Set<PreTerminalWithProb> newPreTerminals = new HashSet<>();
+
+		List<PreTerminalWithProb> daughters = new ArrayList<>();
+		daughters.add(terminalWithProb);
 
 		matchingUnaryGrammarRules.forEach(r -> {
 			String preTerminal = r.getLHS().getSymbols().get(0);
-			double minusLogProb = r.getMinusLogProb() + terminalWithProb.getProb();
-
-			List<PreTerminalWithProb> daughters = new ArrayList<PreTerminalWithProb>();
-			daughters.add(terminalWithProb);
-			PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, minusLogProb, daughters);
+			PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, r.getMinusLogProb(), daughters);
 			newPreTerminals.add(preTerminalWithProb);
 		});
 
