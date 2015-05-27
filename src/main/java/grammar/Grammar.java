@@ -50,7 +50,9 @@ public class Grammar {
 
 		if (!m_useSmoothing){
 			HashSet<Rule> rulesForUnknowns = new HashSet<>();
-			rulesForUnknowns.add(new Rule("NN", "UNK", true));
+			Rule rule = new Rule("NN", "UNK", true);
+			rule.setMinusLogProb(0);
+			rulesForUnknowns.add(rule);
 			m_lexLexicalEntries.put("UNK", rulesForUnknowns);
 			return;
 		}
