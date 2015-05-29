@@ -106,7 +106,7 @@ public class Decode {
 		populateFromLexical(preTerminalsWithProbs, input);
 		populateFromGrams(preTerminalsWithProbs);
 
-		Optional<PreTerminalWithProb> bestPreTerminal = preTerminalsWithProbs[0][0].getAllPreTerminals().stream().collect(Collectors.minBy(Comparator.comparingDouble(c -> c.getAccumulatedProb())));
+		Optional<PreTerminalWithProb> bestPreTerminal = preTerminalsWithProbs[0][0].getAllPreTerminals().stream().filter(t -> !t.getPreTerminal().contains("@")).collect(Collectors.minBy(Comparator.comparingDouble(c -> c.getAccumulatedProb())));
 		Tree tree;
 		if (bestPreTerminal.isPresent())
 		{
