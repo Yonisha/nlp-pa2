@@ -235,7 +235,8 @@ public class Decode {
 			Set<Rule> lexicalRules = m_mapLexicalRules.get(terminal);
 
 			if (lexicalRules == null) {
-				lexicalRules = m_mapLexicalRules.get("UNK");
+				lexicalRules = new HashSet<>();
+				lexicalRules.add(new Rule("NN", terminal, true));
 			}
 
 			List<PreTerminalWithProb> daughters = new ArrayList<>();
