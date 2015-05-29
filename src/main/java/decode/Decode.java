@@ -18,6 +18,7 @@ public class Decode {
 	public static Map<String, Set<Rule>> m_syntacticUnaryRulesByRhsAsKey = null;
 	public static Map<String, Set<Rule>> m_mapLexicalRules = null;
 	private static Map<String, Set<Rule>> m_syntacticBinaryRulesByRhsAsKey = null;
+	private static Map<String, Set<Rule>> m_syntacticTopRulesByRhsAsKey = null;
 
 	/**
 	 * Implementation of a singleton pattern
@@ -35,6 +36,7 @@ public class Decode {
 			m_mapLexicalRules = g.getLexicalEntries();
 			m_syntacticUnaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(1);
 			m_syntacticBinaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(2);
+			m_syntacticTopRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(2);
 			System.out.println("Finished creating Decoder");
 
 		}
@@ -45,6 +47,25 @@ public class Decode {
 		Map<String, Set<Rule>> map = new HashMap<>();
 		for(Rule rule : m_setGrammarRules){
 			if (rule.getRHS().getSymbols().size() != ruleRhsLength)
+				continue;
+
+			String rhs = rule.getRHS().toString();
+			if (map.containsKey(rhs))
+				map.get(rhs).add(rule);
+			else{
+				Set<Rule> setToAdd = new HashSet<>();
+				setToAdd.add(rule);
+				map.put(rhs, setToAdd);
+			}
+		}
+
+		return map;
+	}
+
+	private static Map<String, Set<Rule>> createMapForSyntacticTopRulesWithGivenLengthByRhs() {
+		Map<String, Set<Rule>> map = new HashMap<>();
+		for(Rule rule : m_setGrammarRules){
+			if (!rule.isTop())
 				continue;
 
 			String rhs = rule.getRHS().toString();

@@ -57,7 +57,7 @@ public class Parse {
 			List<String> mySentence = myGoldTreebank.getAnalyses().get(i).getYield();
 			if (mySentence.size() > 40)
 			{
-				myParseTrees.add(new Tree(new Node("TOP_BIG")));
+				myParseTrees.add(new Tree(new Node("TOP")));
 				continue;
 			}
 
@@ -218,11 +218,7 @@ public class Parse {
 			}
 			writer.writeLine(sb.toString());
 		}
+
+		writer.close();
 	}
-
-	
-
-	
-
-
 }
