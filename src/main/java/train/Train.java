@@ -57,11 +57,13 @@ public class Train {
 	public Grammar train(Treebank myTreebank)
 	{
 		Grammar myGrammar = new Grammar(m_useSmoothing);
+		List<Rule> rulesFromAllSentences = new ArrayList<>();
 		for (int i = 0; i < myTreebank.size(); i++) {
 			Tree myTree = myTreebank.getAnalyses().get(i);
 			List<Rule> theRules = getRules(myTree);
-			myGrammar.addAll(theRules);
+			rulesFromAllSentences.addAll(theRules);
 		}
+		myGrammar.addAll(rulesFromAllSentences);
 		return myGrammar;
 	}
 
