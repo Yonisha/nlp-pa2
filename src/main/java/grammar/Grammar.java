@@ -63,11 +63,13 @@ public class Grammar {
 		for (String seenWord : allSeenWords){
 			Set<Rule> rulesForCurrentKey = m_lexLexicalEntries.get(seenWord);
 			if (rulesForCurrentKey.size() == 1){
-				allUnknownRules.add(new Rule(rulesForCurrentKey.iterator().next().getLHS().getSymbols().get(0), "UNK", true));
+				Rule newRuleForUnk = new Rule(rulesForCurrentKey.iterator().next().getLHS().getSymbols().get(0), "UNK", true);
+				allUnknownRules.add(newRuleForUnk);
 				allSeenWordsThatAppearOnce.add(seenWord);
+				getRuleCounts().increment(newRuleForUnk);
 			}
 		}
-		allSeenWordsThatAppearOnce.stream().forEach(w -> m_lexLexicalEntries.remove(w));
+//		allSeenWordsThatAppearOnce.stream().forEach(w -> m_lexLexicalEntries.remove(w));
 		m_lexLexicalEntries.put("UNK", allUnknownRules);
 	}
 
