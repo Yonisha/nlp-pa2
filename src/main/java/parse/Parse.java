@@ -136,10 +136,12 @@ public class Parse {
 		StringBuilder stringBuilder = new StringBuilder();
 		List<String> histories = Arrays.asList(newInternalNodeIdWithFullHistory.split("/"));
 		List<String> relevantHistories = new ArrayList<>();
-		if (m_h > -1)
-			relevantHistories.add(histories.get(0));
+		relevantHistories.add(histories.get(0));
+		if (m_h == -1)
+			relevantHistories.addAll(histories.subList(1, histories.size()));
+		else
+			relevantHistories.addAll(ListExtensions.takeRight(histories.subList(1, histories.size()), m_h));
 
-		relevantHistories.addAll(ListExtensions.takeRight(histories.subList(1, histories.size()), m_h));
 		for (int i = 0; i < relevantHistories.size(); i++) {
 			stringBuilder.append(relevantHistories.get(i));
 			stringBuilder.append('/');
