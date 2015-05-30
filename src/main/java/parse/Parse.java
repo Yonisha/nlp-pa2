@@ -29,15 +29,14 @@ public class Parse {
 		//*     Point-of-Entry     *//
 		//**************************//
 		
-		if (args.length < 3)
+		if (args.length != 5)
 		{
-			System.out.println("Usage: Parse <goldset> <trainset> <experiment-identifier-string>");
+			System.out.println("Usage: Parse <goldset> <trainset> <experiment-identifier-string> <h-level> <smoothing>");
 			return;
 		}
 
-		// TODO move
-		int m_h = 0;
-		boolean m_useSmoothing = false;
+		int m_h = Integer.parseInt(args[3]);
+		boolean m_useSmoothing = Boolean.parseBoolean(args[4]);
 		System.out.println("Using horizontal markovization in level: " + m_h);
 		System.out.println("Using smoothing: " + m_useSmoothing);
 
