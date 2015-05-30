@@ -36,7 +36,7 @@ public class Decode {
 			m_mapLexicalRules = g.getLexicalEntries();
 			m_syntacticUnaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(1);
 			m_syntacticBinaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(2);
-			m_syntacticTopRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(2);
+			m_syntacticTopRulesByRhsAsKey = createMapForSyntacticTopRulesWithGivenLengthByRhs();
 			System.out.println("Finished creating Decoder");
 
 		}
@@ -178,7 +178,7 @@ public class Decode {
 							PreTerminalWithProb firstHeadPreTerminalWithProb = allPreTerminalsForFirstHead.get(l);
 							PreTerminalWithProb secondHeadPreTerminalWithProb = allPreTerminalsForSecondHead.get(m);
 
-							Set<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb);
+							Set<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb, i==0);
 
 							List<PreTerminalWithProb> daughters = new ArrayList<>();
 							daughters.add(firstHeadPreTerminalWithProb);
@@ -198,8 +198,12 @@ public class Decode {
 		}
 	}
 
-	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second) {
-		Set<Rule> matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
+	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second, boolean topLevel) {
+		Set<Rule> matchingRules;
+//		if (topLevel)
+//			matchingRules = m_syntacticTopRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
+//		else
+			matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
 		if (matchingRules != null)
 			return matchingRules;
 
@@ -256,8 +260,9 @@ public class Decode {
 			Set<Rule> lexicalRules = m_mapLexicalRules.get(terminal);
 
 			if (lexicalRules == null) {
-				lexicalRules = new HashSet<>();
-				lexicalRules.add(new Rule("NN", terminal, true));
+//				lexicalRules = new HashSet<>();
+//				lexicalRules.add(new Rule("NN", terminal, true));
+				lexicalRules = m_mapLexicalRules.get("UNK");
 			}
 
 			List<PreTerminalWithProb> daughters = new ArrayList<>();

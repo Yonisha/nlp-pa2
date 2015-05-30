@@ -47,12 +47,12 @@ public class Rule {
 		setLexical(lex);
 	}
 	
-	public Rule(String s1, String s2, boolean lex, boolean top){
-		setLHS(new Event(s1));
-		setRHS(new Event(s2));
-		setLexical(lex);
-		setTop(top);
-	}
+//	public Rule(String s1, String s2, boolean lex, boolean top){
+//		setLHS(new Event(s1));
+//		setRHS(new Event(s2));
+//		setLexical(lex);
+//		setTop(top);
+//	}
 	
 	public Rule(Event e1, Event e2) {
 		setLHS(e1);
