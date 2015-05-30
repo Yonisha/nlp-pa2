@@ -1,5 +1,6 @@
 package parse;
 
+import decode.DummyParser;
 import grammar.Grammar;
 import grammar.Rule;
 
@@ -52,17 +53,14 @@ public class Parse {
 		Grammar myGrammar = Train.getInstance(m_useSmoothing).train(myTrainTreebank);
 		
 		// 4. decode
-		List<Tree> myParseTrees = new ArrayList<Tree>();		
+		List<Tree> myParseTrees = new ArrayList<Tree>();
+		Decode cykDecoder = Decode.getInstance(myGrammar);
 		for (int i = 0; i < myGoldTreebank.size(); i++) {
 			List<String> mySentence = myGoldTreebank.getAnalyses().get(i).getYield();
 			if (mySentence.size() > 40)
-			{
-				myParseTrees.add(new Tree(new Node("TOP")));
-				continue;
-			}
-
-			Tree myParseTree = Decode.getInstance(myGrammar).decode(mySentence);
-			myParseTrees.add(myParseTree);
+				myParseTrees.add(DummyParser.Decode(mySentence));
+			else
+				myParseTrees.add(cykDecoder.decode(mySentence));
 		}
 		
 		// 5. de-transform trees

@@ -136,17 +136,7 @@ public class Decode {
 			top.addDaughter(rootNode);
 			tree = new Tree(top);
 		}else{
-			// Done: Baseline Decoder
-			//       Returns a flat tree with NN labels on all leaves
-			tree = new Tree(new Node("TOP"));
-			Iterator<String> theInput = input.iterator();
-			while (theInput.hasNext()) {
-				String theWord = (String) theInput.next();
-				Node preTerminal = new Node("NN");
-				Terminal terminal = new Terminal(theWord);
-				preTerminal.addDaughter(terminal);
-				tree.getRoot().addDaughter(preTerminal);
-			}
+			tree = DummyParser.Decode(input);
 		}
 
 		return tree;
