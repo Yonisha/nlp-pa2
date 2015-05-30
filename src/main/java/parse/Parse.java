@@ -88,7 +88,6 @@ public class Parse {
 			// add daughters of this node to the parent
 			currentNode.getDaughters().forEach(d -> currentNode.getParent().addDaughter(d));
 		}
-
 		return tree;
 	}
 

@@ -1,16 +1,12 @@
 package decode;
 
-import grammar.Event;
 import grammar.Grammar;
 import grammar.Rule;
 
-import java.sql.Time;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import tree.Node;
-import tree.Terminal;
 import tree.Tree;
 
 public class Decode {
@@ -68,241 +64,216 @@ public class Decode {
 
 		System.out.println();
 
-		// TODO: CYK decoder
-		Tree parsedTree = buildParseChartMatrix(input);
+		// CYK decoder
+		Tree parsedTree = cykDecode(input);
 		return parsedTree;
 	}
 
-	private Node buildNodeFromPreTerminal(PreTerminalWithProb preTerminal){
-
-		Node node = new Node(preTerminal.getPreTerminal());
-
-		if (preTerminal.getDaughters().isEmpty())
-			return node;
-
-		Node firstDaughter = buildNodeFromPreTerminal(preTerminal.getDaughters().get(0));
-		node.addDaughter(firstDaughter);
-
-		if (preTerminal.getDaughters().size() == 2){
-			Node secondDaughter = buildNodeFromPreTerminal(preTerminal.getDaughters().get(1));
-			node.addDaughter(secondDaughter);
-		}
-
-		return node;
-	}
-
-	private Tree buildParseChartMatrix(List<String> input) {
+	private Tree cykDecode(List<String> input) {
 
 		int numOfWords = input.size();
-		Cell[][] preTerminalsWithProbs = new Cell[numOfWords][numOfWords];
+		ParseChartCell[][] parseChart = new ParseChartCell[numOfWords][numOfWords];
 
-		for (int i = 0; i < preTerminalsWithProbs.length; i++) {
-			for (int j = 0; j < preTerminalsWithProbs.length; j++) {
-				preTerminalsWithProbs[i][j] = new Cell();
+		for (int i = 0; i < parseChart.length; i++) {
+			for (int j = 0; j < parseChart.length; j++) {
+				parseChart[i][j] = new ParseChartCell();
 			}
 		}
 
-		long startLex = System.currentTimeMillis();
-		populateFromLexical(preTerminalsWithProbs, input);
-		long endLex = System.currentTimeMillis();
-		System.out.println("Time for lexical: " +  (endLex-startLex) );
+		populateFromLexical(parseChart, input);
+		populateFromGrams(parseChart);
+		Optional<SubTree> bestTreeAccordingToObjectiveFunc = parseChart[0][0].getSubTreeOptions().stream().filter(t -> !t.getTag().contains("@")).collect(Collectors.minBy(Comparator.comparingDouble(c -> c.getAccumulatedMinusLogProb())));
 
-		long start = System.currentTimeMillis();
-		populateFromGrams(preTerminalsWithProbs);
-		long end = System.currentTimeMillis();
-		System.out.println("Time for grams: " + (end-start)  );
-
-		long startBest = System.currentTimeMillis();
-		Optional<PreTerminalWithProb> bestPreTerminal = preTerminalsWithProbs[0][0].getAllPreTerminals().stream().filter(t -> !t.getPreTerminal().contains("@")).collect(Collectors.minBy(Comparator.comparingDouble(c -> c.getAccumulatedProb())));
-		long endBest = System.currentTimeMillis();
-		System.out.println("Time for finding best: " + (endBest-startBest ));
 		Tree tree;
-		if (bestPreTerminal.isPresent())
+		if (bestTreeAccordingToObjectiveFunc.isPresent())
 		{
-			Node rootNode = buildNodeFromPreTerminal(bestPreTerminal.get());
+			Node rootNode = buildNodeFromBestSubTreeOption(bestTreeAccordingToObjectiveFunc.get());
 			Node top = new Node("TOP");
 			top.addDaughter(rootNode);
 			tree = new Tree(top);
 		}else{
 			tree = DummyParser.Decode(input);
 		}
-
 		return tree;
 	}
 
-	private void populateFromGrams(Cell[][] preTerminalsWithProbs) {
-		int startLevel = preTerminalsWithProbs.length - 2;
+	private Node buildNodeFromBestSubTreeOption(SubTree bestSubTree){
 
-		long unaryTime = 0;
-		long firstSecondLoopTime = 0;
+		Node node = new Node(bestSubTree.getTag());
+
+		if (bestSubTree.getDaughters().isEmpty())
+			return node;
+
+		Node firstDaughter = buildNodeFromBestSubTreeOption(bestSubTree.getDaughters().get(0));
+		node.addDaughter(firstDaughter);
+
+		if (bestSubTree.getDaughters().size() == 2){
+			Node secondDaughter = buildNodeFromBestSubTreeOption(bestSubTree.getDaughters().get(1));
+			node.addDaughter(secondDaughter);
+		}
+
+		return node;
+	}
+
+	private void populateFromGrams(ParseChartCell[][] parseChart) {
+		int startLevel = parseChart.length - 2;
 
 		for (int i = startLevel; i >= 0; i--) { // the level we currently work on
 			for (int k = 0; k < i + 1; k++) { // the current tree in the level
 				int secondTreeHeadHeight = i;
 				int secondTreeHeadDepth = k;
 
-				for (int j = preTerminalsWithProbs.length - 1; j > i; j--) { // sub-trees
+				for (int j = parseChart.length - 1; j > i; j--) { // sub-trees
 					int firstTreeHeadHeight = j;
 					int firstTreeHeadDepth = k;
 
 					secondTreeHeadHeight++;
 					secondTreeHeadDepth++;
 
-					List<PreTerminalWithProb> allPreTerminalsForFirstHead = preTerminalsWithProbs[firstTreeHeadHeight][firstTreeHeadDepth].getAllPreTerminals();
-					List<PreTerminalWithProb> allPreTerminalsForSecondHead = preTerminalsWithProbs[secondTreeHeadHeight][secondTreeHeadDepth].getAllPreTerminals();
+					List<SubTree> subTreeOptionsForFirst = parseChart[firstTreeHeadHeight][firstTreeHeadDepth].getSubTreeOptions();
+					List<SubTree> subTreeOptionsForSecond = parseChart[secondTreeHeadHeight][secondTreeHeadDepth].getSubTreeOptions();
 
-					if (allPreTerminalsForFirstHead.isEmpty() || allPreTerminalsForSecondHead.isEmpty())
+					if (subTreeOptionsForFirst.isEmpty() || subTreeOptionsForSecond.isEmpty())
 						continue;
 
-					long start = System.currentTimeMillis();
-					for (int l = 0; l < allPreTerminalsForFirstHead.size(); l++) {
-						for (int m = 0; m < allPreTerminalsForSecondHead.size(); m++) {
-							PreTerminalWithProb firstHeadPreTerminalWithProb = allPreTerminalsForFirstHead.get(l);
-							PreTerminalWithProb secondHeadPreTerminalWithProb = allPreTerminalsForSecondHead.get(m);
+					for (int l = 0; l < subTreeOptionsForFirst.size(); l++) {
+						for (int m = 0; m < subTreeOptionsForSecond.size(); m++) {
+							SubTree subTreeOptionForFirst = subTreeOptionsForFirst.get(l);
+							SubTree subTreeOptionForSecond = subTreeOptionsForSecond.get(m);
 
-							Set<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb);
+							Set<Rule> rulesForTwoSubTreeOptions = findRulesForTwoSubTrees(subTreeOptionForFirst, subTreeOptionForSecond);
 
-							List<PreTerminalWithProb> daughters = new ArrayList<>();
-							daughters.add(firstHeadPreTerminalWithProb);
-							daughters.add(secondHeadPreTerminalWithProb);
+							List<SubTree> daughters = new ArrayList<>();
+							daughters.add(subTreeOptionForFirst);
+							daughters.add(subTreeOptionForSecond);
 
-							for (Rule rule : rulesForPreTerminals) {
-								PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(rule.getLHS().getSymbols().get(0), rule.getMinusLogProb(), daughters);
-								preTerminalsWithProbs[i][k].addPreTerminal(preTerminalWithProb);
+							for (Rule rule : rulesForTwoSubTreeOptions) {
+								SubTree subTree = new SubTree(rule.getLHS().getSymbols().get(0), rule.getMinusLogProb(), daughters);
+								parseChart[i][k].addSubTreeOption(subTree);
 							}
 						}
 					}
-					long end = System.currentTimeMillis();
-					firstSecondLoopTime += end-start;
 				}
 
-				long start = System.currentTimeMillis();
-				addAllUnaryPreTerminals(preTerminalsWithProbs, i, k);
-				long end = System.currentTimeMillis();
-				unaryTime += end-start;
-
+				addAllUnarySubTrees(parseChart, i, k);
 			}
 		}
-
-		System.out.println("Time for add unaries per sentence: " + unaryTime );
-		System.out.println("Time for first/second loop: " +  firstSecondLoopTime );
 	}
 
-	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second) {
+	private Set<Rule> findRulesForTwoSubTrees(SubTree first, SubTree second) {
 		Set<Rule> matchingRules;
-		matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
+		matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getTag() + " " + second.getTag());
 		if (matchingRules != null)
 			return matchingRules;
 
 		return new HashSet<>();
 	}
 
-	private void addAllUnaryPreTerminals(Cell[][] preTerminalsWithProbs, int i, int k) {
-		List<PreTerminalWithProb> unaryPreTerminalsStack = new ArrayList<>();
-		List<PreTerminalWithProb> allPreTerminalsInCell = preTerminalsWithProbs[i][k].getAllPreTerminals();
+	private void addAllUnarySubTrees(ParseChartCell[][] parseChart, int i, int k) {
+		List<SubTree> unarySubTreesStack = new ArrayList<>();
+		List<SubTree> allSubTreesInCell = parseChart[i][k].getSubTreeOptions();
 
 		// Pushing all new unaries to a stack
-		for (PreTerminalWithProb preTerminal : allPreTerminalsInCell){
-			Set<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(preTerminal);
-			for (PreTerminalWithProb preTerminalWithProb : unaryRulesForSinglePreTerminal) {
-				boolean isUnaryRuleRecursive = isUnaryRuleRecursive(preTerminalWithProb.getPreTerminal(), preTerminalWithProb);
+		for (SubTree subTree : allSubTreesInCell){
+			Set<SubTree> newUnarySubTrees = getUnaryRulesForSingleSubTreeOption(subTree);
+			for (SubTree newUnarySubTree : newUnarySubTrees) {
+				boolean isUnaryRuleRecursive = isUnaryRuleRecursive(newUnarySubTree.getTag(), newUnarySubTree);
 				if (!isUnaryRuleRecursive)
-					addOrReplace(unaryPreTerminalsStack, preTerminalWithProb);
+					addOrReplace(unarySubTreesStack, newUnarySubTree);
 			}
 		}
 
 		// Iterating the stack to find all unaries
-		while (!unaryPreTerminalsStack.isEmpty()) {
-			PreTerminalWithProb unary = unaryPreTerminalsStack.get(0);
-			unaryPreTerminalsStack.remove(0);
-			preTerminalsWithProbs[i][k].addPreTerminal(unary);
+		while (!unarySubTreesStack.isEmpty()) {
+			SubTree unary = unarySubTreesStack.get(0);
+			unarySubTreesStack.remove(0);
+			parseChart[i][k].addSubTreeOption(unary);
 
-			Set<PreTerminalWithProb> unaryRulesForSinglePreTerminal = getUnaryRulesForSinglePreTerminal(unary);
-			for (PreTerminalWithProb newPreTerminal : unaryRulesForSinglePreTerminal){
-				preTerminalsWithProbs[i][k].addPreTerminal(newPreTerminal);
-				boolean isUnaryRuleRecursive = isUnaryRuleRecursive(newPreTerminal.getPreTerminal(), newPreTerminal);
+			Set<SubTree> unaryRulesForSingleSubTree = getUnaryRulesForSingleSubTreeOption(unary);
+			for (SubTree subTree : unaryRulesForSingleSubTree){
+				parseChart[i][k].addSubTreeOption(subTree);
+				boolean isUnaryRuleRecursive = isUnaryRuleRecursive(subTree.getTag(), subTree);
 				if (!isUnaryRuleRecursive)
-					addOrReplace(unaryPreTerminalsStack, newPreTerminal);
+					addOrReplace(unarySubTreesStack, subTree);
 			}
 		}
 	}
 
-	private void addOrReplace(List<PreTerminalWithProb> all, PreTerminalWithProb preTerminalWithProb){
-		Optional<PreTerminalWithProb> existingOne = all.stream().filter(t -> t.getPreTerminal().equalsIgnoreCase(preTerminalWithProb.getPreTerminal())).findFirst();
+	// if a sub tree with same tag exists - take the one with the better accumulated prob
+	private void addOrReplace(List<SubTree> all, SubTree newSubTree){
+		Optional<SubTree> existingOne = all.stream().filter(t -> t.getTag().equalsIgnoreCase(newSubTree.getTag())).findFirst();
 		if (!existingOne.isPresent()){
-			all.add(preTerminalWithProb);
+			all.add(newSubTree);
 			return;
 		}
 
-		double accumulatedProbOfExistingOne = existingOne.get().getAccumulatedProb();
-		double accumulatedProbOfNewOne = preTerminalWithProb.getAccumulatedProb();
+		double accumulatedProbOfExistingOne = existingOne.get().getAccumulatedMinusLogProb();
+		double accumulatedProbOfNewOne = newSubTree.getAccumulatedMinusLogProb();
 
 		if (accumulatedProbOfNewOne < accumulatedProbOfExistingOne){
 			for (int i = 0; i < all.size(); i++) {
-				if (all.get(i).getPreTerminal().equalsIgnoreCase(preTerminalWithProb.getPreTerminal())){
+				if (all.get(i).getTag().equalsIgnoreCase(newSubTree.getTag())){
 					all.remove(i);
 					break;
 				}
 			}
 
-			all.add(preTerminalWithProb);
+			all.add(newSubTree);
 		}
 
 		return;
 	}
 
-	private boolean isUnaryRuleRecursive(String lhs, PreTerminalWithProb unary){
+	private boolean isUnaryRuleRecursive(String lhs, SubTree unary){
 		if (unary.getDaughters().size() != 1)
 			return false;
 
-		if (lhs.equalsIgnoreCase(unary.getDaughters().get(0).getPreTerminal()))
+		if (lhs.equalsIgnoreCase(unary.getDaughters().get(0).getTag()))
 			return true;
 
 		return isUnaryRuleRecursive(lhs, unary.getDaughters().get(0));
 	}
 
-	private void populateFromLexical(Cell[][] preTerminalsWithProbs, List<String> input) {
+	private void populateFromLexical(ParseChartCell[][] parseChart, List<String> input) {
 		int numOfWords = input.size();
 		int startLevel = numOfWords - 1;
 		for (int i = 0; i < numOfWords; i++) {
-			String terminal = input.get(i);
-			Set<Rule> lexicalRules = m_mapLexicalRules.get(terminal);
+			String word = input.get(i);
+			Set<Rule> lexicalRules = m_mapLexicalRules.get(word);
 
 			if (lexicalRules == null) {
-//				lexicalRules = new HashSet<>();
-//				lexicalRules.add(new Rule("NN", terminal, true));
 				lexicalRules = m_mapLexicalRules.get("UNK");
 			}
 
-			List<PreTerminalWithProb> daughters = new ArrayList<>();
-			daughters.add(new PreTerminalWithProb(terminal, 0, new ArrayList<>()));
+			List<SubTree> daughters = new ArrayList<>();
+			daughters.add(new SubTree(word, 0, new ArrayList<>()));
 			final int terminalIndex = i;
 			lexicalRules.forEach(r -> {
-				String preTerminal = r.getLHS().getSymbols().get(0);
-				PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, r.getMinusLogProb(), daughters);
-				preTerminalsWithProbs[startLevel][terminalIndex].addPreTerminal(preTerminalWithProb);
+				String tag = r.getLHS().getSymbols().get(0);
+				SubTree subTreeOption = new SubTree(tag, r.getMinusLogProb(), daughters);
+				parseChart[startLevel][terminalIndex].addSubTreeOption(subTreeOption);
 			});
 
-			addAllUnaryPreTerminals(preTerminalsWithProbs, startLevel, terminalIndex);
+			addAllUnarySubTrees(parseChart, startLevel, terminalIndex);
 		}
 	}
 
-	private Set<PreTerminalWithProb> getUnaryRulesForSinglePreTerminal(PreTerminalWithProb terminalWithProb){
-		Set<Rule> matchingUnaryGrammarRules =  m_syntacticUnaryRulesByRhsAsKey.get(terminalWithProb.getPreTerminal());
+	private Set<SubTree> getUnaryRulesForSingleSubTreeOption(SubTree subTree){
+		Set<Rule> matchingUnaryGrammarRules =  m_syntacticUnaryRulesByRhsAsKey.get(subTree.getTag());
 		if (matchingUnaryGrammarRules == null)
 			return new HashSet<>();
 
-		Set<PreTerminalWithProb> newPreTerminals = new HashSet<>();
+		Set<SubTree> newSubTrees = new HashSet<>();
 
-		List<PreTerminalWithProb> daughters = new ArrayList<>();
-		daughters.add(terminalWithProb);
+		List<SubTree> daughters = new ArrayList<>();
+		daughters.add(subTree);
 
 		matchingUnaryGrammarRules.forEach(r -> {
-			String preTerminal = r.getLHS().getSymbols().get(0);
-			PreTerminalWithProb preTerminalWithProb = new PreTerminalWithProb(preTerminal, r.getMinusLogProb(), daughters);
-			newPreTerminals.add(preTerminalWithProb);
+			String tag = r.getLHS().getSymbols().get(0);
+			SubTree newSubTreeOption = new SubTree(tag, r.getMinusLogProb(), daughters);
+			newSubTrees.add(newSubTreeOption);
 		});
 
-		return newPreTerminals;
+		return newSubTrees;
 	}
 }
