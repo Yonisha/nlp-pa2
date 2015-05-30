@@ -18,7 +18,6 @@ public class Decode {
 	public static Map<String, Set<Rule>> m_syntacticUnaryRulesByRhsAsKey = null;
 	public static Map<String, Set<Rule>> m_mapLexicalRules = null;
 	private static Map<String, Set<Rule>> m_syntacticBinaryRulesByRhsAsKey = null;
-	private static Map<String, Set<Rule>> m_syntacticTopRulesByRhsAsKey = null;
 
 	/**
 	 * Implementation of a singleton pattern
@@ -36,7 +35,6 @@ public class Decode {
 			m_mapLexicalRules = g.getLexicalEntries();
 			m_syntacticUnaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(1);
 			m_syntacticBinaryRulesByRhsAsKey = createMapForSyntacticRulesWithGivenLengthByRhs(2);
-			m_syntacticTopRulesByRhsAsKey = createMapForSyntacticTopRulesWithGivenLengthByRhs();
 			System.out.println("Finished creating Decoder");
 
 		}
@@ -62,28 +60,7 @@ public class Decode {
 		return map;
 	}
 
-	private static Map<String, Set<Rule>> createMapForSyntacticTopRulesWithGivenLengthByRhs() {
-		Map<String, Set<Rule>> map = new HashMap<>();
-		for(Rule rule : m_setGrammarRules){
-			if (!rule.isTop())
-				continue;
-
-			String rhs = rule.getRHS().toString();
-			if (map.containsKey(rhs))
-				map.get(rhs).add(rule);
-			else{
-				Set<Rule> setToAdd = new HashSet<>();
-				setToAdd.add(rule);
-				map.put(rhs, setToAdd);
-			}
-		}
-
-		return map;
-	}
-
-
 	public Tree decode(List<String> input){
-
 		for (int i = 0; i < input.size(); i++) {
 			System.out.print(input.get(i) + " ");
 		}
@@ -168,7 +145,7 @@ public class Decode {
 							PreTerminalWithProb firstHeadPreTerminalWithProb = allPreTerminalsForFirstHead.get(l);
 							PreTerminalWithProb secondHeadPreTerminalWithProb = allPreTerminalsForSecondHead.get(m);
 
-							Set<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb, i==0);
+							Set<Rule> rulesForPreTerminals = findRulesForPreTerminals(firstHeadPreTerminalWithProb, secondHeadPreTerminalWithProb);
 
 							List<PreTerminalWithProb> daughters = new ArrayList<>();
 							daughters.add(firstHeadPreTerminalWithProb);
@@ -188,12 +165,9 @@ public class Decode {
 		}
 	}
 
-	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second, boolean topLevel) {
+	private Set<Rule> findRulesForPreTerminals(PreTerminalWithProb first, PreTerminalWithProb second) {
 		Set<Rule> matchingRules;
-//		if (topLevel)
-//			matchingRules = m_syntacticTopRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
-//		else
-			matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
+		matchingRules = m_syntacticBinaryRulesByRhsAsKey.get(first.getPreTerminal() + " " + second.getPreTerminal());
 		if (matchingRules != null)
 			return matchingRules;
 

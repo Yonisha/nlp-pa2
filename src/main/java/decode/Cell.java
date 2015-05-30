@@ -2,6 +2,7 @@ package decode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Cell {
@@ -16,13 +17,13 @@ public class Cell {
     }
 
     private void addOrReplace(PreTerminalWithProb preTerminalWithProb){
-        List<PreTerminalWithProb> preTerminalsWithSameName = this.getAllPreTerminals().stream().filter(t -> t.getPreTerminal().equalsIgnoreCase(preTerminalWithProb.getPreTerminal())).collect(Collectors.toList());
-        if (preTerminalsWithSameName.isEmpty()){
+        Optional<PreTerminalWithProb> existingOne = this.getAllPreTerminals().stream().filter(t -> t.getPreTerminal().equalsIgnoreCase(preTerminalWithProb.getPreTerminal())).findFirst();
+        if (!existingOne.isPresent()){
             this.preTerminalsWithProbs.add(preTerminalWithProb);
             return;
         }
 
-        double accumulatedProbOfExistingOne = preTerminalsWithSameName.get(0).getAccumulatedProb();
+        double accumulatedProbOfExistingOne = existingOne.get().getAccumulatedProb();
         double accumulatedProbOfNewOne = preTerminalWithProb.getAccumulatedProb();
 
         if (accumulatedProbOfNewOne < accumulatedProbOfExistingOne){
